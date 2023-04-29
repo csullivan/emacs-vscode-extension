@@ -1,63 +1,112 @@
 import * as vscode from 'vscode';
 
-let at_last_edit = false;
+let markStartPosition: vscode.Position | null = null;
+let decorationType: vscode.TextEditorDecorationType | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
-    const disposable = vscode.commands.registerCommand('extension.statefulKeybind', () => {
-        // 
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-            if (at_last_edit) {
-                at_last_edit = false;
-                vscode.commands.executeCommand('workbench.action.navigateBack');
-            } else {
-                at_last_edit = true;
-                vscode.commands.executeCommand('workbench.action.navigateToLastEditLocation');
-            }
-        }
-    });
+  decorationType = vscode.window.createTextEditorDecorationType({
+    backgroundColor: 'rgba(255, 0, 0, 0.3)', // Set the red box background color
+    isWholeLine: false,
+  });
 
-    context.subscriptions.push(disposable);
+  const disposable = vscode.commands.registerCommand('emacsMarkMode.toggle', () => {
+    const editor = vscode.window.activeTextEditor;
 
-    const disposable2 = vscode.commands.registerCommand('extension.exampleSearchAndReplace', async () => {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-            vscode.window.showErrorMessage('No active text editor found.');
-            return;
-        }
-
-        const searchTerm = await vscode.window.showInputBox({ prompt: 'Enter the search term' });
-        if (!searchTerm) {
-            return;
-        }
-
-        const replaceTerm = await vscode.window.showInputBox({ prompt: 'Enter the replace term' });
-        if (!replaceTerm) {
-            return;
-        }
-
-        editor.edit(editBuilder => {
-            const document = editor.document;
-            const documentText = document.getText();
-            const searchRegex = new RegExp(escapeRegExp(searchTerm), 'g');
-
-            let match;
-            while ((match = searchRegex.exec(documentText)) !== null) {
-                const range = new vscode.Range(
-                    document.positionAt(match.index),
-                    document.positionAt(match.index + match[0].length)
-                );
-                editBuilder.replace(range, replaceTerm);
-            }
-        });
-    });
-
-    context.subscriptions.push(disposable2);
-
-
-    function escapeRegExp(string: string): string {
-        return string.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
+    if (!editor) {
+      return;
     }
-    
+
+    if (markStartPosition === null) {
+      markStartPosition = editor.selection.active;
+      vscode.window.showInformationMessage('Mark set.');
+    } else {
+      const currentCursorPosition = editor.selection.active;
+      editor.selection = new vscode.Selection(markStartPosition, currentCursorPosition);
+      markStartPosition = null;
+      clearDecoration(editor);
+    }
+  });
+
+  context.subscriptions.push(disposable); 
+
+  const disposable2 = vscode.commands.registerCommand('emacsMarkMode.removeMark', () => {
+    const editor = vscode.window.activeTextEditor;
+
+    if (!editor) {
+      return;
+    }
+
+    if (markStartPosition !== null) {
+      markStartPosition = null;
+      clearDecoration(editor);
+    }
+  });
+
+  context.subscriptions.push(disposable2); 
+
+  const disposable3 = vscode.commands.registerCommand('emacsMarkMode.cutSelection', () => {
+    const editor = vscode.window.activeTextEditor;
+  
+    if (!editor) {
+      return;
+    }
+  
+    const cutSelectedText = () => {
+      const selectedText = editor.document.getText(editor.selection);
+  
+      vscode.env.clipboard.writeText(selectedText).then(() => {
+        editor.edit(editBuilder => {
+          editBuilder.delete(editor.selection);
+        });
+      });
+      markStartPosition = null;
+      clearDecoration(editor);
+    };
+  
+    if (markStartPosition !== null) {
+      const currentCursorPosition = editor.selection.active;
+      editor.selection = new vscode.Selection(markStartPosition, currentCursorPosition);
+      cutSelectedText();
+    } else {
+      cutSelectedText();
+    }
+  });
+  
+
+  context.subscriptions.push(disposable3); 
+
+  // Listen for changes in the text editor's selection
+  const selectionChangeDisposable = vscode.window.onDidChangeTextEditorSelection((event) => {
+    if (markStartPosition !== null) {
+      const editor = event.textEditor;
+      const currentCursorPosition = editor.selection.active;
+      updateDecoration(editor, markStartPosition, currentCursorPosition);
+    }
+  });
+
+  // Add the selection change event listener disposable to the context's subscriptions
+  context.subscriptions.push(selectionChangeDisposable);
 }
 
+export function deactivate() {
+  markStartPosition = null;
+}
+
+function clearDecoration(editor: vscode.TextEditor) {
+  if (decorationType) {
+    editor.setDecorations(decorationType, []);
+  }
+}
+
+// DONE-TODO(): Try cutting based on this range because the normal selection is a bit wonky
+// TODO(): Rewrite to save mark and move to mark
+function updateDecoration(
+  editor: vscode.TextEditor,
+  startPosition: vscode.Position,
+  endPosition: vscode.Position
+) {
+  if (decorationType) {
+    const range = new vscode.Range(startPosition, endPosition);
+    editor.setDecorations(decorationType, [range]);
+  }
+}

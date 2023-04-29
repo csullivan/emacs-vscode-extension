@@ -11,31 +11,41 @@
 	"categories": [
 		"Other"
 	],
-	"activationEvents": [],
+	"activationEvents": [
+		"onCommand:emacsMarkMode.toggle"
+	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
-			  "command": "extension.statefulKeybind",
-			  "title": "Stateful Keybind"
+				"command": "emacsMarkMode.toggle",
+				"title": "Toggle Emacs Mark Mode"
 			},
 			{
-			  "command": "extension.exampleSearchAndReplace",
-			  "title": "CustomSearchAndReplace"
-			}	
-
+				"command": "emacsMarkMode.removeMark",
+				"title": "Remove the Emacs Mark Mode mark"
+			},
+			{
+				"command": "emacsMarkMode.cutSelection",
+				"title": "Cut the current Emacs Mark Mode selection"
+			}						
 		  ],
-		  "keybindings": [
-			// {
-			//   "command": "extension.statefulKeybind",
-			//   "key": "ctrl+x ctrl+x",
-			//   "when": "editorTextFocus"
-			// },
-			// {
-			//   "command": "extension.exampleSearchAndReplace",
-			//   "key": "ctrl+x ctrl+t",
-			//   "when": "editorTextFocus"
-			// }
+		"keybindings": [
+			{
+				"command": "emacsMarkMode.toggle",
+				"key": "ctrl+space",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "emacsMarkMode.removeMark",
+				"key": "ctrl+g",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "emacsMarkMode.cutSelection",
+				"key": "ctrl+w",
+				"when": "editorTextFocus"
+			}						 
 		  ]
 	},
 	"scripts": {
