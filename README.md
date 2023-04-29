@@ -1,6 +1,6 @@
 # Emacs Mark Mode for VSCode
 
-This VSCode extension brings Emacs-style mark mode to your editor, allowing you to set a mark, highlight text, and perform cut operations using familiar keybindings.
+This VSCode extension brings Emacs-style mark mode to your editor, allowing you to set a mark, highlight text, and perform cut operations using familiar keybindings. Note that the project is in progress and not feature complete.
 
 ## Features
 
