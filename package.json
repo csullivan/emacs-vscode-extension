@@ -1,10 +1,10 @@
 {
-	"name": "emacs-mark-mode",
-	"displayName": "Emacs Mark Mode",
-	"description": "Emacs Extensions for VS Code",
+	"name": "helloworld-sample",
+	"displayName": "helloworld-sample",
+	"description": "HelloWorld example for VS Code",
 	"version": "0.0.1",
-	"publisher": "csullivan",
-	"repository": "https://github.com/csullivan/emacs-vscode-extension",
+	"publisher": "vscode-samples",
+	"repository": "https://github.com/Microsoft/vscode-extension-samples/helloworld-sample",
 	"engines": {
 		"vscode": "^1.74.0"
 	},
@@ -12,19 +12,9 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:emacsMarkMode.toggle",
-		"onCommand:emacsMarkMode.removeMark",
-		"onCommand:emacsMarkMode.cutSelection",
-		"onCommand:emacsMarkMode.customUndo",
-		"onCommand:emacsMarkMode.customRedo",
-		"onCommand:emacsMarkMode.showUndoTree",
-		"onCommand:emacsMarkMode.moveDown",
-		"onCommand:emacsMarkMode.moveUp",
-		"onCommand:emacsMarkMode.moveLeft",
-		"onCommand:emacsMarkMode.moveRight"
+		"onCommand:emacsMarkMode.toggle"
 	],
-	
-	"main": "./out/emacsMarkMode.js",
+	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
@@ -38,35 +28,7 @@
 			{
 				"command": "emacsMarkMode.cutSelection",
 				"title": "Cut the current Emacs Mark Mode selection"
-			},
-			{
-			"command": "emacsMarkMode.customUndo",
-			"title": "Custom Undo"
-			},
-			{
-			"command": "emacsMarkMode.customRedo",
-			"title": "Custom Redo"
-			},
-			{
-			"command": "emacsMarkMode.showUndoTree",
-			"title": "Show Undo Tree"
-			},
-			{
-			"command": "emacsMarkMode.moveDown",
-			"title": "Move Down"
-			},
-			{
-			"command": "emacsMarkMode.moveUp",
-			"title": "Move Up"
-			},
-			{
-			"command": "emacsMarkMode.moveLeft",
-			"title": "Move Left"
-			},
-			{
-			"command": "emacsMarkMode.moveRight",
-			"title": "Move Right"
-			}					
+			}						
 		  ],
 		"keybindings": [
 			{
