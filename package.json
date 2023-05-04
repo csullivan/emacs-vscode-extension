@@ -11,9 +11,6 @@
 	"categories": [
 		"Other"
 	],
-	"activationEvents": [
-		"onCommand:emacsMarkMode.toggle"
-	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
@@ -28,7 +25,35 @@
 			{
 				"command": "emacsMarkMode.cutSelection",
 				"title": "Cut the current Emacs Mark Mode selection"
-			}						
+			},
+			{
+				"command": "emacsMarkMode.showUndoTree",
+				"title": "Undo Tree: Show"
+			},
+			{
+				"command": "emacsMarkMode.customUndo",
+				"title": "Undo Tree: Undo"
+			},
+			{
+				"command": "emacsMarkMode.customRedo",
+				"title": "Undo Tree: Redo"
+			},
+			{
+				"command": "emacsMarkMode.moveDown",
+				"title": "Undo Tree: Move Down"
+			},										
+			{
+				"command": "emacsMarkMode.moveUp",
+				"title": "Undo Tree: Move Up"
+			},
+			{
+				"command": "emacsMarkMode.moveLeft",
+				"title": "Undo Tree: Move Left"
+			},
+			{
+				"command": "emacsMarkMode.moveRight",
+				"title": "Undo Tree: Move Right"
+			}
 		  ],
 		"keybindings": [
 			{
