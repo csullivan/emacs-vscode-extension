@@ -1,5 +1,14 @@
 # Emacs Mark Mode for VSCode
 
+```
+   curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+   sudo apt-get install -y nodejs
+   npm install
+   npm run compile
+   npm install -g vsce
+   vsce package
+```
+
 This VSCode extension brings Emacs-style mark mode to your editor, allowing you to set a mark, highlight text, and perform cut operations using familiar keybindings. Note that the project is in progress and not feature complete.
 
 ## Features
