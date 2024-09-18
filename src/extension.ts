@@ -1,9 +1,19 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import fetch from 'node-fetch';
+
 
 let markStartPosition: vscode.Position | null = null;
 let decorationType: vscode.TextEditorDecorationType | null = null;
 let isApplyingDiff = false;
+const undoTreeVisualizations: Map<string, vscode.Uri> = new Map();
 
+// Define the type for the position data
+interface PositionData {
+  line: number;
+  column: number;
+  file_path: string;
+}
 
 export function activate(context: vscode.ExtensionContext) {
   decorationType = vscode.window.createTextEditorDecorationType({
@@ -93,14 +103,13 @@ export function activate(context: vscode.ExtensionContext) {
   //////////// Undo Tree ////////////
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument(async (e) => {
-      if (!isApplyingDiff) {
-        // console.log('Diff:', JSON.stringify(e.contentChanges[0], null, 2));
-
-        const undoTree = getUndoTreeForDocument(e.document);
-        const originalText = e.contentChanges[0].text;
-        // console.log('Original text:', originalText);
-
-        undoTree.addNode(e.contentChanges[0], originalText);
+      if (!isApplyingDiff && e.document.uri.scheme === 'file' && e.document === vscode.window.activeTextEditor?.document) {
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+          const undoTree = getUndoTreeForDocument(editor.document);
+          const fileState = editor.document.getText();
+          undoTree.addNode(fileState);
+        }
       }
     })
   );
@@ -111,31 +120,32 @@ export function activate(context: vscode.ExtensionContext) {
       if (editor) {
         const undoTree = getUndoTreeForDocument(editor.document);
         undoTree.undo();
-        await applyDiff(undoTree.current, true);
+        await applyFileState(undoTree.current);
       }
     })
   );
-
+  
   context.subscriptions.push(
     vscode.commands.registerCommand('emacsMarkMode.customRedo', async () => {
       const editor = vscode.window.activeTextEditor;
       if (editor) {
         const undoTree = getUndoTreeForDocument(editor.document);
-        await applyDiff(undoTree.current, false);
+        await applyFileState(undoTree.current);
         undoTree.redo();
       }
     })
   );
-
+  
   context.subscriptions.push(
     vscode.commands.registerCommand('emacsMarkMode.showUndoTree', async () => {
       const editor = vscode.window.activeTextEditor;
       if (editor) {
         const undoTree = getUndoTreeForDocument(editor.document);
-        await displayUndoTree(undoTree);
+        await displayUndoTree(undoTree, editor.document);
       }
     })
   );
+  
 
   // Register custom keybindings for traversing the tree
   context.subscriptions.push(
@@ -181,6 +191,70 @@ export function activate(context: vscode.ExtensionContext) {
 
 
 
+  let disposableOpenEmacs = vscode.commands.registerCommand('emacs.openEmacs', () => {
+      let editor = vscode.window.activeTextEditor;
+      if (!editor) {
+          return;
+      }
+      editor.document.save();
+      let lineNumber = editor.selection.active.line + 1; // lines are 0-indexed
+      let columnNumber = editor.selection.active.character + 1; // characters are 0-indexed
+      let terminal = vscode.window.createTerminal(`Emacs: ${editor.document.fileName}`);
+      terminal.sendText(`emacs +${lineNumber}:${columnNumber} ${editor.document.fileName}`);
+      terminal.show();
+      vscode.commands.executeCommand('workbench.action.terminal.moveToEditor').then(() => {
+          terminal.show();
+      });
+      terminal.show();
+
+  });
+
+
+
+  context.subscriptions.push(disposableOpenEmacs);
+
+
+  function isPositionData(data: any): data is PositionData {
+    return 'line' in data && 'column' in data && 'file_path' in data;
+  }
+
+  let disposable_server = vscode.commands.registerCommand('extension.openFileAtLineAndColumn', async () => {
+    // Fetch the line, column, and file path from the Python server
+    const response = await fetch('http://localhost:5000/position');
+    const data = await response.json(); 
+    if (!isPositionData(data)) {
+        console.error('Invalid position data', data);
+        return;
+    }
+    const positionData: PositionData = data;
+    const line = positionData.line - 1;
+    const column = positionData.column;
+    const filePath = path.resolve(positionData.file_path);
+    // console.log('filePath', filePath);
+    // console.log('line', line);
+    // console.log('column', column);
+
+    
+    // Check if the document is already open
+    let document: vscode.TextDocument | undefined = vscode.workspace.textDocuments.find(doc => doc.fileName === filePath);
+
+    // Open the file if it's not already open
+    if (!document) {
+        document = await vscode.workspace.openTextDocument(filePath);
+    }
+
+    // Open the document in the editor
+    const editor = await vscode.window.showTextDocument(document);
+
+    // Move the cursor
+    const position = new vscode.Position(line, column);
+    editor.selection = new vscode.Selection(position, position);
+    editor.revealRange(new vscode.Range(position, position));
+});
+
+context.subscriptions.push(disposable_server);
+
+
 
 
 }
@@ -217,21 +291,16 @@ function updateDecoration(
 class UndoTreeNode {
   parent: UndoTreeNode | null;
   children: UndoTreeNode[];
-  diff: vscode.TextDocumentContentChangeEvent | null;
-  originalText: string | null;
+  fileState: string | null;
 
-  constructor(
-    parent: UndoTreeNode | null,
-    diff: vscode.TextDocumentContentChangeEvent | null,
-    originalText: string | null
-  ) {
+  constructor(parent: UndoTreeNode | null, fileState: string | null) {
     this.parent = parent;
     this.children = [];
-    this.diff = diff;
-    this.originalText = originalText;
+    this.fileState = fileState;
   }
 }
-async function applyDiff(node: UndoTreeNode, undo: boolean) {
+
+async function applyFileState(node: UndoTreeNode) {
   isApplyingDiff = true;
   try {
     const editor = vscode.window.activeTextEditor;
@@ -239,30 +308,13 @@ async function applyDiff(node: UndoTreeNode, undo: boolean) {
       return;
     }
 
-    const diff = node.diff;
-
-    if (diff) {
-      let range: vscode.Range;
-      let text: string | null;
-
-      if (undo) {
-        console.log('Attempt to undo diff:\n', JSON.stringify(diff, null, 2));
-
-        const endPosition = diff.range.start.translate(0, diff.text.length+1);
-        const startPostion = diff.range.start.translate(0, 1);
-        range = new vscode.Range(startPostion, endPosition);
-        text = diff.rangeLength === 0 ? '' : node.originalText;
-      } else {
-        range = diff.range.with(undefined, diff.range.start.translate(0, diff.text.length));
-        
-        text = diff.text;
-      }
-
-      if (text !== null) {
-        await editor.edit((editBuilder) => {
-          editBuilder.replace(range, text!);
-        });
-      }
+    if (node.fileState !== null) {
+      const entireRange = editor.document.validateRange(
+        new vscode.Range(0, 0, Infinity, Infinity)
+      );
+      await editor.edit((editBuilder) => {
+        editBuilder.replace(entireRange, node.fileState!);
+      });
     }
   } finally {
     isApplyingDiff = false;
@@ -272,18 +324,21 @@ async function applyDiff(node: UndoTreeNode, undo: boolean) {
 class UndoTree {
   current: UndoTreeNode;
   root: UndoTreeNode;
+  selectedChildIndex: number;
 
   constructor() {
-    this.root = new UndoTreeNode(null, null, null);
+    this.root = new UndoTreeNode(null, null);
     this.current = this.root;
+    this.selectedChildIndex = 0;
   }
 
-  addNode(diff: vscode.TextDocumentContentChangeEvent, originalText: string) {
-    const newNode = new UndoTreeNode(this.current, diff, originalText);
+  addNode(fileState: string) {
+    const newNode = new UndoTreeNode(this.current, fileState);
     this.current.children.push(newNode);
     this.current = newNode;
   }
-  
+
+
   undo() {
     if (this.current.parent) {
       this.current = this.current.parent;
@@ -292,10 +347,11 @@ class UndoTree {
 
   redo() {
     if (this.current.children.length > 0) {
-      this.current = this.current.children[0];
+      // Use the selectedChildIndex to determine which child node to move to.
+      this.current = this.current.children[this.selectedChildIndex];
+      this.selectedChildIndex = 0;
     }
-  }
-}
+  }}
 
 const undoTrees: Map<string, UndoTree> = new Map();
 
@@ -307,69 +363,91 @@ function getUndoTreeForDocument(document: vscode.TextDocument): UndoTree {
   return undoTrees.get(uri)!;
 }
 
+
 /// Rendering
 
-function renderTree(tree: UndoTree, currentNode: UndoTreeNode | null = null): string[] {
-  function renderNode(node: UndoTreeNode, lines: string[]): string[] {
-    const childrenCount = node.children.length;
-    if (childrenCount === 0) {
-      return [node === currentNode ? 'x' : 'o'];
+function renderTree(tree: UndoTreeNode, currentNode: UndoTreeNode, selectedChildIndex: number): string[] {
+  let lines: string[] = [];
+
+  function traverse(node: UndoTreeNode, depth: number, prefix: string, isLastSibling: boolean, isSelectedChild: boolean) {
+    const isCurrentNode = node === currentNode;
+    lines.push(prefix + (isCurrentNode ? "x" : "o") + (isSelectedChild ? "*" : ""));
+
+    if (node.children.length > 0) {
+      const childPrefix = prefix.slice(0, -3) + (isLastSibling ? "   " : "|  ");
+      for (let i = 0; i < node.children.length; i++) {
+        if (i > 0) {
+          lines.push(childPrefix + "|");
+        }
+        // Mark the child with "*" only if the current node is the active node
+        const markChild = isCurrentNode && i === selectedChildIndex;
+        traverse(node.children[i], depth + 1, childPrefix + (i < node.children.length - 1 ? "|__" : "\\  "), i === node.children.length - 1, markChild);
+      }
     }
-
-    const childLines: string[][] = node.children.map((child) => renderNode(child, lines));
-    const maxChildHeight = Math.max(...childLines.map((lines) => lines.length));
-
-    const extendedChildLines = childLines.map((lines) => {
-      const padding = Array(maxChildHeight - lines.length).fill(' ');
-      return padding.concat(lines);
-    });
-
-    const horizontalLine = extendedChildLines.map(() => ' ').join('_');
-    const verticalLines = extendedChildLines.map(() => '|').join(' ');
-
-    const nodeSymbol = node === currentNode ? 'x' : 'o';
-    const nodeLine = `${nodeSymbol}${horizontalLine}`;
-
-    return [nodeLine, verticalLines].concat(...extendedChildLines);
   }
 
-  return renderNode(tree.root, []);
+  traverse(tree, 0, "", true, false);
+  return lines;
 }
 
-async function displayUndoTree(tree: UndoTree) {
-  const text = renderTree(tree, tree.current).join('\n');
-  const uri = vscode.Uri.parse(`untitled:${encodeURIComponent('Undo Tree')}`);
-  const doc = await vscode.workspace.openTextDocument({ content: text, language: 'plaintext' });
-  await vscode.window.showTextDocument(doc, { preview: false, viewColumn: vscode.ViewColumn.Beside });
+async function displayUndoTree(tree: UndoTree, document: vscode.TextDocument) {
+  const text = renderTree(tree.root, tree.current, tree.selectedChildIndex).join('\n');
+  const documentUri = document.uri.toString();
+  const existingVisualizationUri = undoTreeVisualizations.get(documentUri);
+
+  if (existingVisualizationUri) {
+    // Update the content of the existing undo tree visualization file.
+    const existingDoc = await vscode.workspace.openTextDocument(existingVisualizationUri);
+    const entireRange = existingDoc.validateRange(
+      new vscode.Range(0, 0, Infinity, Infinity)
+    );
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(existingVisualizationUri, entireRange, text);
+    await vscode.workspace.applyEdit(edit);
+    await vscode.window.showTextDocument(existingDoc, { preview: false, viewColumn: vscode.ViewColumn.Beside });
+  } else {
+    // Create a new undo tree visualization file and store the mapping.
+    const uri = vscode.Uri.parse(`untitled:${encodeURIComponent('Undo Tree')}`);
+    const doc = await vscode.workspace.openTextDocument({ content: text, language: 'plaintext' });
+    await vscode.window.showTextDocument(doc, { preview: false, viewColumn: vscode.ViewColumn.Beside });
+    undoTreeVisualizations.set(documentUri, uri);
+  }
+
+  // Switch back to the original document.
+  const originalEditor = vscode.window.visibleTextEditors.find(
+    (editor) => editor.document.uri.toString() === documentUri
+  );
+  if (originalEditor) {
+    await vscode.window.showTextDocument(originalEditor.document, { viewColumn: originalEditor.viewColumn });
+  } else {
+    await vscode.window.showTextDocument(document, { preview: false });
+  }
 }
 
 async function traverseTree(document: vscode.TextDocument, undoTree: UndoTree, direction: 'up' | 'down' | 'left' | 'right') {
   switch (direction) {
     case 'up':
       undoTree.undo();
-      await applyDiff(undoTree.current, true);
+      await applyFileState(undoTree.current);
       break;
     case 'down':
-      await applyDiff(undoTree.current, false);
+      await applyFileState(undoTree.current);
       undoTree.redo();
       break;
-    case 'left':
-      if (undoTree.current.parent && undoTree.current.parent.children.length > 1) {
-        const index = undoTree.current.parent.children.indexOf(undoTree.current);
-        if (index > 0) {
-          undoTree.current = undoTree.current.parent.children[index - 1];
-          await applyDiff(undoTree.current, false);
-        }
+    case 'right':
+      if (undoTree.current.children.length > 1) {
+        undoTree.selectedChildIndex = Math.max(0, undoTree.selectedChildIndex - 1);
       }
       break;
-    case 'right':
-      if (undoTree.current.parent && undoTree.current.parent.children.length > 1) {
-        const index = undoTree.current.parent.children.indexOf(undoTree.current);
-        if (index < undoTree.current.parent.children.length - 1) {
-          undoTree.current = undoTree.current.parent.children[index + 1];
-          await applyDiff(undoTree.current, false);
-        }
+    case 'left':
+      if (undoTree.current.children.length > 1) {
+        undoTree.selectedChildIndex = Math.min(undoTree.current.children.length - 1, undoTree.selectedChildIndex + 1);
       }
       break;
   }
+    // Update the visualization after traversing the tree
+    await displayUndoTree(undoTree, document);
+
 }
+
+

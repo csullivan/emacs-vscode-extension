@@ -1,10 +1,10 @@
 {
-	"name": "helloworld-sample",
-	"displayName": "helloworld-sample",
-	"description": "HelloWorld example for VS Code",
+	"name": "EmacsEmulationExtension",
+	"displayName": "emacs-emulation",
+	"description": "Chris Sullivan's emacs emulation extension",
 	"version": "0.0.1",
-	"publisher": "vscode-samples",
-	"repository": "https://github.com/Microsoft/vscode-extension-samples/helloworld-sample",
+	"publisher": "chris-sullivan",
+	"repository": "https://github.com/csullivan/emacs-vscode-extension",
 	"engines": {
 		"vscode": "^1.74.0"
 	},
@@ -12,6 +12,9 @@
 		"Other"
 	],
 	"main": "./out/extension.js",
+	"activationEvents": [
+		"*"
+	],
 	"contributes": {
 		"commands": [
 			{
@@ -41,7 +44,7 @@
 			{
 				"command": "emacsMarkMode.moveDown",
 				"title": "Undo Tree: Move Down"
-			},										
+			},
 			{
 				"command": "emacsMarkMode.moveUp",
 				"title": "Undo Tree: Move Up"
@@ -53,8 +56,16 @@
 			{
 				"command": "emacsMarkMode.moveRight",
 				"title": "Undo Tree: Move Right"
+			},
+			{
+				"command": "emacs.openEmacs",
+				"title": "Open in Emacs"
+			},
+			{
+				"command": "extension.openFileAtLineAndColumn",
+				"title": "Run server commands"
 			}
-		  ],
+		],
 		"keybindings": [
 			{
 				"command": "emacsMarkMode.toggle",
@@ -70,8 +81,41 @@
 				"command": "emacsMarkMode.cutSelection",
 				"key": "ctrl+w",
 				"when": "editorTextFocus"
-			}						 
-		  ]
+			},
+			{
+				"command": "emacsMarkMode.showUndoTree",
+				"key": "ctrl+cmd+s",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "emacsMarkMode.moveUp",
+				"key": "ctrl+cmd+p",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "emacsMarkMode.moveDown",
+				"key": "ctrl+cmd+n",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "emacsMarkMode.moveLeft",
+				"key": "ctrl+cmd+b",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "emacsMarkMode.moveRight",
+				"key": "ctrl+cmd+f",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "emacs.openEmacs",
+				"key": "ctrl+x e"
+			},
+			{
+				"command": "extension.openFileAtLineAndColumn",
+				"key": "ctrl+x E"
+			}
+		]
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
@@ -81,10 +125,14 @@
 	},
 	"devDependencies": {
 		"@types/node": "^16.11.7",
+		"@types/node-fetch": "^2.6.4",
 		"@types/vscode": "^1.73.0",
 		"@typescript-eslint/eslint-plugin": "^5.42.0",
 		"@typescript-eslint/parser": "^5.42.0",
 		"eslint": "^8.26.0",
 		"typescript": "^5.0.2"
+	},
+	"dependencies": {
+		"node-fetch": "^2.6.11"
 	}
 }
