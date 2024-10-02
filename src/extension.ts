@@ -17,7 +17,7 @@ interface PositionData {
 
 export function activate(context: vscode.ExtensionContext) {
   decorationType = vscode.window.createTextEditorDecorationType({
-    backgroundColor: 'rgba(255, 0, 0, 0.3)', // Set the red box background color
+    backgroundColor: 'rgba(141, 110, 199, 0.3)', // Set the red box background color
     isWholeLine: false,
   });
 
