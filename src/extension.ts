@@ -87,6 +87,31 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(disposable3); 
 
+  const disposable4 = vscode.commands.registerCommand('emacsMarkMode.commentRegion', () => {
+    const editor = vscode.window.activeTextEditor;
+    
+    if (!editor) {
+      return;
+    }
+
+    const commentSelectedRegion = () => {
+      vscode.commands.executeCommand('editor.action.commentLine');
+      markStartPosition = null;
+      clearDecoration(editor);
+    };
+
+    if (markStartPosition !== null) {
+      const currentCursorPosition = editor.selection.active;
+      editor.selection = new vscode.Selection(markStartPosition, currentCursorPosition);
+      commentSelectedRegion();
+    } else if (!editor.selection.isEmpty) {
+      commentSelectedRegion();
+    }
+    // If markStartPosition is null and there's no active selection, do nothing
+  });
+
+  context.subscriptions.push(disposable4);
+
   // Listen for changes in the text editor's selection
   const selectionChangeDisposable = vscode.window.onDidChangeTextEditorSelection((event) => {
     if (markStartPosition !== null) {

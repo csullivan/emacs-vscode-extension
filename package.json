@@ -30,6 +30,10 @@
 				"title": "Cut the current Emacs Mark Mode selection"
 			},
 			{
+				"command": "emacsMarkMode.commentRegion",
+				"title": "Comment the current Emacs Mark Mode selection"
+			},
+			{
 				"command": "emacsMarkMode.showUndoTree",
 				"title": "Undo Tree: Show"
 			},
@@ -75,6 +79,11 @@
 			{
 				"command": "emacsMarkMode.removeMark",
 				"key": "ctrl+g",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "emacsMarkMode.commentRegion",
+				"key": "ctrl+x ;",
 				"when": "editorTextFocus"
 			},
 			{
