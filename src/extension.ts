@@ -49,6 +49,9 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     if (markStartPosition !== null) {
+      const currentCursorPosition = editor.selection.active;
+      editor.selection = new vscode.Selection(markStartPosition, currentCursorPosition);
+
       markStartPosition = null;
       clearDecoration(editor);
     }
