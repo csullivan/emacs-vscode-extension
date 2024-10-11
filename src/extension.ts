@@ -282,8 +282,20 @@ export function activate(context: vscode.ExtensionContext) {
 
 context.subscriptions.push(disposable_server);
 
+// Register delete-duplicate-lines command
+context.subscriptions.push(
+  vscode.commands.registerCommand('emacsMarkMode.deleteDuplicateLines', deleteDuplicateLines)
+);
 
+// Register flush-lines command
+context.subscriptions.push(
+  vscode.commands.registerCommand('emacsMarkMode.flushLines', flushLines)
+);
 
+// Register keep-lines command
+context.subscriptions.push(
+  vscode.commands.registerCommand('emacsMarkMode.keepLines', keepLines)
+);
 
 }
 
@@ -479,3 +491,84 @@ async function traverseTree(document: vscode.TextDocument, undoTree: UndoTree, d
 }
 
 
+
+async function deleteDuplicateLines() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return;
+  }
+
+  const document = editor.document;
+  const fullRange = new vscode.Range(
+    document.lineAt(0).range.start,
+    document.lineAt(document.lineCount - 1).range.end
+  );
+
+  const text = document.getText();
+  const lines = text.split('\n');
+  const uniqueLines = [...new Set(lines)];
+
+  await editor.edit(editBuilder => {
+    editBuilder.replace(fullRange, uniqueLines.join('\n'));
+  });
+}
+
+async function flushLines() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return;
+  }
+
+  const searchString = await vscode.window.showInputBox({
+    prompt: 'Enter search string for flush-lines',
+    placeHolder: 'Lines containing this string will be deleted'
+  });
+
+  if (searchString === undefined) {
+    return; // User cancelled the input
+  }
+
+  const document = editor.document;
+  const fullRange = new vscode.Range(
+    document.lineAt(0).range.start,
+    document.lineAt(document.lineCount - 1).range.end
+  );
+
+  const text = document.getText();
+  const lines = text.split('\n');
+  const keptLines = lines.filter(line => !line.includes(searchString));
+
+  await editor.edit(editBuilder => {
+    editBuilder.replace(fullRange, keptLines.join('\n'));
+  });
+}
+
+async function keepLines() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return;
+  }
+
+  const searchString = await vscode.window.showInputBox({
+    prompt: 'Enter search string for keep-lines',
+    placeHolder: 'Only lines containing this string will be kept'
+  });
+
+  if (searchString === undefined) {
+    return; // User cancelled the input
+  }
+
+  const document = editor.document;
+  const fullRange = new vscode.Range(
+    document.lineAt(0).range.start,
+    document.lineAt(document.lineCount - 1).range.end
+  );
+
+  const text = document.getText();
+  const lines = text.split('\n');
+  const keptLines = lines.filter(line => line.includes(searchString));
+
+  await editor.edit(editBuilder => {
+    editBuilder.replace(fullRange, keptLines.join('\n'));
+  });
+}

@@ -68,6 +68,18 @@
 			{
 				"command": "extension.openFileAtLineAndColumn",
 				"title": "Run server commands"
+			},
+			{
+				"command": "emacsMarkMode.deleteDuplicateLines",
+				"title": "Emacs: Delete Duplicate Lines"
+			},
+			{
+				"command": "emacsMarkMode.flushLines",
+				"title": "Emacs: Flush Lines"
+			},
+			{
+				"command": "emacsMarkMode.keepLines",
+				"title": "Emacs: Keep Lines"
 			}
 		],
 		"keybindings": [
